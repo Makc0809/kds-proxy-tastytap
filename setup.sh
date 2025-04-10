@@ -28,7 +28,11 @@ cd /opt/kds-proxy
 echo "[\$(date)] 🔄 Updating agent from GitHub..." >> /opt/kds-proxy/update.log
 git pull origin main >> /opt/kds-proxy/update.log 2>&1
 npm install >> /opt/kds-proxy/update.log 2>&1
-systemctl restart kds-proxy.service
+if command -v systemctl &> /dev/null; then
+  systemctl restart kds-proxy.service
+else
+  echo "[\$(date)] ⚠️ systemctl not found. Please restart agent manually." >> /opt/kds-proxy/update.log
+fi
 EOF
 
 chmod +x /opt/kds-proxy/update.sh
@@ -37,9 +41,11 @@ chmod +x /opt/kds-proxy/update.sh
 echo "🕒 Registering cron update job..."
 (crontab -l 2>/dev/null; echo "0 * * * * /opt/kds-proxy/update.sh") | crontab -
 
-# Создаем systemd unit
-echo "🛠 Installing systemd service..."
-cat <<EOF > /etc/systemd/system/kds-proxy.service
+# Проверка systemd
+if command -v systemctl &> /dev/null; then
+  echo "🛠 Installing systemd service..."
+
+  cat <<EOF > /etc/systemd/system/kds-proxy.service
 [Unit]
 Description=KDS Proxy Agent
 After=network.target
@@ -55,9 +61,13 @@ WorkingDirectory=/opt/kds-proxy
 WantedBy=multi-user.target
 EOF
 
-# Активируем и запускаем
-systemctl daemon-reexec
-systemctl enable kds-proxy
-systemctl start kds-proxy
+  systemctl daemon-reexec
+  systemctl enable kds-proxy
+  systemctl start kds-proxy
 
-echo "✅ Installed and running! You can check status via: systemctl status kds-proxy"
+  echo "✅ Service installed and running. Check with: systemctl status kds-proxy"
+
+else
+  echo "⚠️ systemctl not found. To run agent manually, use:"
+  echo "   node /opt/kds-proxy/agent.js"
+fi
