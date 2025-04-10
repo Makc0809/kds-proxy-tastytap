@@ -18,9 +18,15 @@ cd /opt/kds-proxy
 npm install
 
 # Установка сервиса
-sudo cp ./kds-proxy.service /etc/systemd/system/
-sudo systemctl daemon-reexec
-sudo systemctl enable kds-proxy
-sudo systemctl start kds-proxy
+if pidof systemd > /dev/null; then
+  echo "🧩 Detected systemd — setting up service..."
+  cp ./kds-proxy.service /etc/systemd/system/
+  systemctl daemon-reexec
+  systemctl enable kds-proxy
+  systemctl start kds-proxy
+else
+  echo "⚠️ systemd not found. Run agent manually:"
+  echo "cd /opt/kds-proxy && node agent.js"
+fi
 
 echo "✅ Done. Device ID: $(cat /opt/kds-proxy/device-config.json | jq -r .deviceId)"

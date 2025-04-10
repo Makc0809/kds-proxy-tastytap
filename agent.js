@@ -45,8 +45,35 @@ async function registerDevice(deviceId, ip) {
   return res.json(); // { pairingCode, printers }
 }
 
+async function tryRegister(deviceId, ip, maxAttempts = 5, delay = 3000) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      console.log(`🔌 Attempt ${attempt}/${maxAttempts} to register device...`);
+      const res = await registerDevice(deviceId, ip);
+      if (!res || typeof res !== 'object') throw new Error('Empty response');
+
+      console.log(`✅ Registration complete.`);
+      return res;
+    } catch (err) {
+      console.error(`❌ Register failed [${attempt}]:`, err.message);
+      if (attempt < maxAttempts) {
+        console.log(`⏳ Retrying in ${delay / 1000}s...`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      } else {
+        console.error('🚫 Max attempts reached. Exiting.');
+        process.exit(1);
+      }
+    }
+  }
+}
+
 function startPrinterServers(printers, deviceId) {
   stopAllServers();
+
+  if (!Array.isArray(printers)) {
+    console.log('⚠️ No printers configured yet. Waiting for backend update...');
+    return;
+  }
 
   printers.forEach(({ name, port }) => {
     const server = net.createServer((socket) => {
@@ -121,12 +148,20 @@ async function init() {
   } else {
     const deviceId = generateDeviceId();
     const ip = getLocalIp();
-    const response = await registerDevice(deviceId, ip);
+
+
+    console.log(`🆔 Device ID: ${deviceId}`);
+    console.log(`🌐 Local IP: ${ip}`);
+
+    const response = await tryRegister(deviceId, ip);
+    const printers = response.printers || [];
+
+
     config = {
       deviceId,
       ip,
       pairingCode: response.pairingCode,
-      printers: response.printers
+      printers,
     };
     saveConfig(config);
     console.log(`🔗 Pairing Code: ${response.pairingCode}`);
