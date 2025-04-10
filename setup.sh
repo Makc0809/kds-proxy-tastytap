@@ -1,32 +1,36 @@
 #!/bin/bash
-set -e  # остановит при ошибке
+set -e
 
 echo "📦 Installing KDS Proxy..."
 
-apt install sudo -y
+apt update
+apt install -y git curl avahi-daemon nano cron
 
-sudo apt update
-sudo apt install -y git curl avahi-daemon
-
-# Node.js
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt install -y nodejs
+echo "📥 Installing Node.js..."
+curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+apt install -y nodejs
 
 # Клонируем агента
-git clone https://github.com/Makc0809/kds-proxy-tastytap.git /opt/kds-proxy
+echo "📁 Cloning agent..."
+git clone https://github.com/Makc0809/kds-proxy-tastytap.git /opt/kds-proxy || (cd /opt/kds-proxy && git pull)
 cd /opt/kds-proxy
 npm install
 
-# Установка сервиса
-if pidof systemd > /dev/null; then
-  echo "🧩 Detected systemd — setting up service..."
-  cp ./kds-proxy.service /etc/systemd/system/
-  systemctl daemon-reexec
-  systemctl enable kds-proxy
-  systemctl start kds-proxy
-else
-  echo "⚠️ systemd not found. Run agent manually:"
-  echo "cd /opt/kds-proxy && node agent.js"
-fi
+# Создаем update.sh
+echo "🛠 Creating update.sh..."
+cat <<EOF > /opt/kds-proxy/update.sh
+#!/bin/bash
+cd /opt/kds-proxy
+echo "[\$(date)] 🔄 Updating agent from GitHub..." >> /opt/kds-proxy/update.log
+git pull origin main >> /opt/kds-proxy/update.log 2>&1
+npm install >> /opt/kds-proxy/update.log 2>&1
+EOF
 
-echo "✅ Done. Device ID: $(cat /opt/kds-proxy/device-config.json | jq -r .deviceId)"
+chmod +x /opt/kds-proxy/update.sh
+
+# Добавим cron-задание
+echo "🕒 Adding cron job..."
+(crontab -l 2>/dev/null; echo "0 * * * * /opt/kds-proxy/update.sh") | crontab -
+
+echo "✅ KDS Proxy installed!"
+echo "🆔 To start agent manually: cd /opt/kds-proxy && node agent.js"
