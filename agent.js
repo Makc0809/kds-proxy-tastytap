@@ -36,14 +36,26 @@ function getLocalIp() {
   return null;
 }
 
-async function registerDevice(deviceId, ip) {
+const registerDevice = async (deviceId, ip) => {
   const res = await fetch(`${API_BASE}/api/kds/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ deviceId, ip })
   });
-  return res.json(); // { pairingCode, printers }
-}
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Backend responded with ${res.status}: ${text}`);
+  }
+
+  const data = await res.json();
+
+  if (!data || !data.pairingCode || !Array.isArray(data.printers)) {
+    throw new Error('Backend response invalid or incomplete');
+  }
+
+  return data; // { pairingCode, printers }
+};
 
 async function tryRegister(deviceId, ip, maxAttempts = 5, delay = 3000) {
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -153,9 +165,8 @@ async function init() {
     console.log(`🆔 Device ID: ${deviceId}`);
     console.log(`🌐 Local IP: ${ip}`);
 
-    const response = await tryRegister(deviceId, ip);
+    const response = await tryRegister(deviceId, ip, 100, 1000); // 100 попыток, каждые 1 сек
     const printers = response.printers || [];
-
 
     config = {
       deviceId,
