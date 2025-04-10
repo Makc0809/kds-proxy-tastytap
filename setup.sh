@@ -3,6 +3,8 @@ set -e  # остановит при ошибке
 
 echo "📦 Installing KDS Proxy..."
 
+apt install sudo -y
+
 sudo apt update
 sudo apt install -y git curl avahi-daemon
 
@@ -11,7 +13,7 @@ curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt install -y nodejs
 
 # Клонируем агента
-git clone https://github.com/your-org/kds-proxy.git /opt/kds-proxy
+git clone https://github.com/Makc0809/kds-proxy-tastytap.git /opt/kds-proxy
 cd /opt/kds-proxy
 npm install
 
