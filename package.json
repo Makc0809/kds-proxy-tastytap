@@ -1,0 +1,10 @@
+{
+  "name": "kds-proxy",
+  "version": "1.0.0",
+  "main": "agent.js",
+  "type": "module",
+  "dependencies": {
+    "node-fetch": "^3.3.2",
+    "ws": "^8.18.1"
+  }
+}

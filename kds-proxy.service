@@ -1,0 +1,12 @@
+[Unit]
+Description=KDS Proxy Agent
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/node /opt/kds-proxy/agent.js
+Restart=always
+User=pi
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target
