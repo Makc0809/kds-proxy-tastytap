@@ -165,7 +165,7 @@ async function init() {
     console.log(`🆔 Device ID: ${deviceId}`);
     console.log(`🌐 Local IP: ${ip}`);
 
-    const response = await tryRegister(deviceId, ip, 100, 1000); // 100 попыток, каждые 1 сек
+    const response = await tryRegister(deviceId, ip, 100, 5000); // 100 попыток, каждые 1 сек
     const printers = response.printers || [];
 
     config = {
