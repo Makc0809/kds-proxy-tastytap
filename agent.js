@@ -87,6 +87,11 @@ function startPrinterServers(printers, deviceId) {
     return;
   }
 
+  if (Array.isArray(printers) && printers.length === 0) {
+    console.log('⚠️ No printers registered for this device yet.');
+    return;
+  }
+
   printers.forEach(({ name, port }) => {
     const server = net.createServer((socket) => {
       let buffer = '';
@@ -125,6 +130,11 @@ function setupWebSocket(deviceId) {
 
   ws.on('open', () => {
     console.log('🌐 WebSocket connected');
+    ws.send(JSON.stringify({
+      type: 'hello',
+      deviceId,
+      ip: getLocalIp()
+    }));
   });
 
   ws.on('message', (data) => {
