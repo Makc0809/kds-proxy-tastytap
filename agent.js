@@ -10,7 +10,7 @@ const CONFIG_FILE = './device-config.json';
 // const WS_URL = 'wss://your-backend.com/kds/socket';
 
 const API_BASE = 'http://192.168.0.97:5005';
-const WS_URL = 'ws://192.168.0.97:3000/kds/socket';
+const WS_URL = 'ws://192.168.0.97:3000/ws/kds';
 
 let currentServers = [];
 
