@@ -10,7 +10,9 @@ const CONFIG_FILE = './device-config.json';
 // const WS_URL = 'wss://your-backend.com/kds/socket';
 
 const API_BASE = 'http://192.168.0.97:5005';
-const WS_URL = 'ws://192.168.0.97:3000/ws/kds';
+const WS_URL = 'ws://192.168.0.97:5005/ws/kds';
+
+let wsBlocked = false;
 
 let currentServers = [];
 
@@ -24,6 +26,26 @@ function generateDeviceId() {
 
   const raw = macs.join('-') + os.hostname();
   return crypto.createHash('sha256').update(raw).digest('hex').substring(0, 12);
+}
+
+function getCachedDeviceId() {
+  const idFile = './.device-id';
+  if (fs.existsSync(idFile)) {
+    return fs.readFileSync(idFile, 'utf-8').trim();
+  }
+
+  const interfaces = os.networkInterfaces();
+  const macs = Object.values(interfaces)
+      .flat()
+      .filter(i => i && !i.internal && i.mac)
+      .map(i => i.mac)
+      .sort();
+
+  const raw = macs.join('-');
+  const deviceId = crypto.createHash('sha256').update(raw).digest('hex').substring(0, 12);
+
+  fs.writeFileSync(idFile, deviceId);
+  return deviceId;
 }
 
 function getLocalIp() {
@@ -140,16 +162,47 @@ function setupWebSocket(deviceId) {
   ws.on('message', (data) => {
     try {
       const msg = JSON.parse(data.toString());
+
+      if (msg.type === 'unauthorized') {
+        console.warn(`🔒 Unauthorized: reason=${msg.reason}`);
+        wsBlocked = true;
+
+        if (msg.reason === 'not_registered') {
+          try {
+            if (fs.existsSync(CONFIG_FILE)) fs.unlinkSync(CONFIG_FILE);
+            if (fs.existsSync('.device-id')) fs.unlinkSync('.device-id');
+          } catch (e) {
+            console.error('❌ Failed to delete config:', e.message);
+          }
+          stopAllServers();
+          setTimeout(() => {
+            wsBlocked = false;
+            init();
+          }, 3000);
+        } else {
+          // Просто ждём
+          stopAllServers();
+          setTimeout(() => {
+            wsBlocked = false;
+            setupWebSocket(deviceId);
+          }, 60000);
+        }
+
+        return;
+      }
+
       if (msg.type === 'config_update') {
         console.log('🔄 Received updated printer config');
         startPrinterServers(msg.printers, deviceId);
       }
+
     } catch (err) {
       console.error('❌ Invalid WS message:', err);
     }
   });
 
   ws.on('close', () => {
+    if (wsBlocked) return;
     console.log('❌ WebSocket disconnected. Reconnecting in 10s...');
     setTimeout(() => setupWebSocket(deviceId), 10000);
   });
@@ -168,7 +221,7 @@ async function init() {
   if (fs.existsSync(CONFIG_FILE)) {
     config = JSON.parse(fs.readFileSync(CONFIG_FILE));
   } else {
-    const deviceId = generateDeviceId();
+    const deviceId = getCachedDeviceId();
     const ip = getLocalIp();
 
 
