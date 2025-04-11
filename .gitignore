@@ -9,3 +9,4 @@ package-lock.json
 # system files
 .device-id
 device-config.json
+update.sh
